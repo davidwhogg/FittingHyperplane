@@ -1,0 +1,102 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[letterpaper]{geometry}
+\usepackage{setspace}
+\usepackage{amsmath, amsfonts, mathrsfs, bm}
+
+% typesetting issues
+\setstretch{1.08}
+\addtolength{\topmargin}{-0.30in}
+\addtolength{\textheight}{1.60in}
+\setlength{\textwidth}{5.0in}
+\setlength{\oddsidemargin}{0.5\paperwidth}\addtolength{\oddsidemargin}{-1.0in}\addtolength{\oddsidemargin}{-0.5\textwidth}
+\pagestyle{myheadings}
+\markboth{foo}{\sffamily Hogg \& Saydjari / Fitting a hyperplane with uncertainties in all directions}
+\renewcommand{\newblock}{} % this adjusts the bibliography style.
+\frenchspacing\sloppy\sloppypar\raggedbottom
+
+% text macros
+\renewcommand{\paragraph}[1]{\bigskip\par\noindent\textbf{#1}~---}
+\newcommand{\documentname}{\textsl{Note}}
+\newcommand{\sectionname}{Section}
+\newcommand{\secref}[1]{\sectionname~\ref{#1}}
+\renewcommand{\figurename}{Figure}
+\newcommand{\figref}[1]{\figurename~\ref{#1}}
+\newcommand{\foreign}[1]{\textsl{#1}}
+
+% math macros
+\renewcommand{\vec}[1]{\bm{#1}}
+\newcommand{\mat}[1]{\mathsf{#1}}
+\newcommand{\given}{\,|\,}
+
+\title{\bfseries Fitting a hyperplane to data when there are uncertainties in all directions}
+\author{Hogg \& Saydjari}
+\date{May 2025}
+\begin{document}
+\maketitle\thispagestyle{empty}
+
+The setup is as follows:
+We have $N$ data points $\vec{x}_i\in\mathbb{R}^D$ ($1\leq i\leq N$).
+Each of these has a $D\times D$ covariance matrix $\mat{C}_i$ representing (accurately) the $D$-dimensional variance tensor of the zero-mean additive Gaussian noise that has moved $\vec{x}_i$ away from its ``true'' value $\vec{\tilde{x}}_i$.
+The assumption is that these ``true'' values lie on a $(D-1)$-dimensional hyperplane in the $D$ space.
+In the case of $D=2$, this reduces to the problem of fitting a line to two-dimensional data, which have uncertainties in both dimensions (\cite{HBL}, Section~WHATEVER).
+
+There are two approaches, both slightly annoying.
+The first, and most consistent with the content of \cite{HBL}, is to go Bayesian.
+In this case, you can think of the hyperplane as being a prior on the ``true'' locations $\vec{\tilde{x}}_i$ of each data point, and then the inference of the location and orientation of the hyperplane takes the form of a hierarchical inference.
+The second, and requiring far fewer assumptions, is to go frequentist.
+In this case, we find the maximum-log-likelihood location of each point on any proposed hyperplane, and add up those profile log likelihood values to get the log profile likelihood of the line.
+
+In both of these cases, we have choices about parameterization of the hyperplane.
+The option we choose here is that there plane is defined by a set of orthogonal unit vectors $\vec{\hat{u}}_k$ ($1\leq k\leq D$), such that any point on the plane can be described with a $(D-1)$-vector $\vec{s}$ of coordinates $s_k$ ($1\leq k\leq (D-1)$)
+\begin{align}
+    \vec{\tilde{x}}(\vec{s}) &= a\,\vec{\hat{u}}_D + \sum_{k=1}^{D-1} s_k\,\vec{\hat{u}}_k ~,
+\end{align}
+where $a$ gives the displacement of the hyperplane away from the origin in the perpendicular direction.
+The goal of inference is to obtain a good estimate of the orientation of the hyperplane (the hyperspace spanned by the $\vec{\hat{u}}_k$ for $k<D$) and its position $a$.
+This parameterization has degeneracies, which we could break if necessary;
+fundamentally the orientation of the hyperplane is set by the orientation of its normal vector $\vec{\hat{u}}_D$.
+This is all illustrated for $D=2$ in \figref{fig:setup}.
+
+\paragraph{Bayesian approach}
+The Bayesians need probability distributions over latents; we can provide.
+We can imagine that the probability density for the $(D-1)$-dimensional position $\vec{s}$ on the hyperplane is a limit of a probability of being at a $D$-dimensional position $\vec{x}$ in the space.
+For example, the probability density for points in the plane could be drawn from a Gaussian with mean $\mu$ and variance tensor $\mat{\Lambda}$ defined by
+\begin{align}
+    \mu &= a\,\vec{\hat{u}}_D \\
+    \mat{\Lambda} &= \lim_{\epsilon\rightarrow 0}\left[ \epsilon^{(D-1)}\,\vec{\hat{u}}_D\,\vec{\hat{u}}_D^\top + \sum_{k=1}^{D-1} \frac{1}{\epsilon}\,\vec{\hat{u}}_k\,\vec{\hat{u}}_k^\top\right] ~,
+\end{align}
+where we have taken the limit of an infinitely thin, infinitely extended Gaussian, and implicitly the $D$-vectors $\vec{\hat{u}}_k$ are column vectors.
+The power $(D-1)$ is employed to give this variance tensor a determinant of unity.
+
+The Gaussian with mean $\mu$ and variance $\mat{\Lambda}$ is the probability distribution for the the ``true'' positions of any points that live on the hyperplane.
+The noisy observed points $\vec{x}_i$ are displaced off of the plane by (zero-mean) Gaussian noise with known variance tensors $\mat{C}_i$.
+The marginalized likelihood for any data point can be found by multiplying these Gaussians and integrating.
+The math is in \cite{HPWL}; the result is
+\begin{align}
+    \ln p(\vec{x}_i\given \vec{\hat{u}}_D,a) &= -\frac{1}{2}\,[\vec{x}_i - a\,\vec{\hat{u}}_D]^\top\,(\mat{C}_i + \mat{\Lambda})^{-1}\,[\vec{x}_i - a\,\vec{\hat{u}}_D] + \text{constant} ~.
+\end{align}
+Since the covariance $\mat{\Lambda}$ is zero in one direction, and infinite in all others, this quadratic form depends only on the displacement in the $\vec{\hat{u}}_D$ direction.
+That is
+\begin{align}
+    \ln p(\vec{x}_i\given \vec{\hat{u}}_D,a) &= -\frac{1}{2}\,\frac{(\vec{x}_i^\top\,\vec{\hat{u}}_D - a)^2}{\vec{\hat{u}}_D^\top\,\mat{C}_i^{-1}\,\vec{\hat{u}}_D} + \text{constant} ~,
+\end{align}
+where the numerator involves the scalar projection of the data point onto the normal direction, and the denominator is the scalar projection of covariance matrix.
+Now you can combine these individual data-point likelihoods with any priors you like and do Bayesian inference.
+Or you can just maximize the combined likelihood.
+
+HOGG SAYS: Technically, the ``constant'' isn't exactly constant. But it involves an infinity, so I am concerned.
+
+\paragraph{Frequentist approach}
+Frequentists don't like to put measures on anything they don't need to; in frequentism we deal with latent parameters by maximizing or profiling.
+So our goal is to produce, for each data point $\vec{x}_i$, a profile likelihood, which is the likelihood of the maximum-likelihood point that lies on the hyperplane.
+It turns out that this point is the ``closest'' point on the hyperplane, but closest under the definition of distance in which the data point's inverse covariance matrix $\mat{C}_i^{-1}$ is treated as the metric of the space.
+The profile likelihood is then just the likelihood for the ``true'' position $\vec{\tilde{x}}$ evaluated at that ``closest'' point.
+
+HOGG SAYS: Do math.
+
+\raggedright
+\bibliographystyle{plain}
+\bibliography{fitting}
+
+\end{document}
